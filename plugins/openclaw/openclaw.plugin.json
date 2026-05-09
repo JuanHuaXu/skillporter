@@ -3,7 +3,8 @@
   "name": "Skillporter",
   "description": "On-demand skill search and ephemeral context injection from Skillporter index",
   "version": "0.1.0",
-  "kind": ["tool"],
+  "kind": ["tool", "hook"],
+  "main": "dist/index.js",
   "activation": {
     "onStartup": true,
     "onCommands": ["skill_search", "skill_load", "skill_done"]
