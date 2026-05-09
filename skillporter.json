@@ -2,7 +2,10 @@
   "skillDirs": ["./test-skills"],
   "includePatterns": ["**/*.md"],
   "excludePatterns": ["**/node_modules/**", "**/dist/**", "**/README.md"],
-  "outDir": ".skillporter"
+  "outDir": ".skillporter",
+  "port": 3000,
+  "host": "127.0.0.1",
+  "maxSearchResults": 20,
+  "rateLimitWindowMs": 900000,
+  "rateLimitMax": 1000
 }
-// updated config
- 
