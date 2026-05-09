@@ -8,6 +8,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { SkillporterConfigSchema } from './config-schema.js';
 import { indexSkills, loadInventory } from './indexer.js';
+import { searchInventory } from './search.js';
+import { extractActionContent } from './parser.js';
 
 const program = new Command();
 
@@ -93,12 +95,14 @@ program
   .command('serve')
   .description('Start HTTP API server')
   .option('-c, --config <path>', 'path to skillporter.json', 'skillporter.json')
-  .option('-p, --port <number>', 'port to listen on', '3000')
+  .option('-p, --port <number>', 'port to listen on')
+  .option('-H, --host <host>', 'host to bind to')
   .action(async (options) => {
     try {
       const { config, configPath } = await loadConfig(options.config);
       const app = express();
-      const port = parseInt(options.port, 10);
+      const port = options.port ? parseInt(options.port, 10) : config.port;
+      const host = options.host || config.host;
 
       // Security: Add Helmet for secure headers
       app.use(helmet());
@@ -106,14 +110,39 @@ program
       // Security: Rate limiting to prevent DoS
       const limiter = rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 100, // Limit each IP to 100 requests per window
+        max: 200, // Limit each IP to 200 requests per window
         standardHeaders: true,
         legacyHeaders: false,
         message: 'Too many requests, please try again later.'
       });
       app.use(limiter);
 
-      app.get('/skills', async (req, res) => {
+      // Health check
+      app.get('/health', async (_req, res) => {
+        try {
+          const inventory = await loadInventory(config, configPath);
+          const actionCount = inventory.skills.reduce((sum, s) => sum + s.actions.length, 0);
+          res.json({ ok: true, skillCount: inventory.skills.length, actionCount });
+        } catch (e) {
+          res.status(503).json({ ok: false, error: 'Index unavailable' });
+        }
+      });
+
+      // Search endpoint
+      app.get('/search', async (req, res) => {
+        try {
+          const query = typeof req.query.q === 'string' ? req.query.q : '';
+          if (!query.trim()) return res.json([]);
+          const inventory = await loadInventory(config, configPath);
+          const results = searchInventory(inventory, query, config.maxSearchResults);
+          res.json(results);
+        } catch (e) {
+          res.status(500).json({ error: 'Internal server error' });
+        }
+      });
+
+      // List all skills (compact metadata)
+      app.get('/skills', async (_req, res) => {
         try {
           const inventory = await loadInventory(config, configPath);
           res.json(inventory.skills.map(s => ({ 
@@ -126,7 +155,8 @@ program
         }
       });
 
-      app.get('/actions', async (req, res) => {
+      // List all actions across all skills
+      app.get('/actions', async (_req, res) => {
         try {
           const inventory = await loadInventory(config, configPath);
           const actions = inventory.skills.flatMap(s => s.actions.map(a => ({ 
@@ -139,6 +169,24 @@ program
         }
       });
 
+      // Get a specific action's content (section-level extraction)
+      app.get('/skills/:name/actions/:action', async (req, res) => {
+        try {
+          const inventory = await loadInventory(config, configPath);
+          const sanitizedName = req.params.name.replace(/[^\w\-\/ ]/g, '').toLowerCase();
+          const skill = inventory.skills.find(s => s.name.toLowerCase() === sanitizedName);
+          if (!skill) return res.status(404).json({ error: 'Skill not found' });
+
+          const actionContent = extractActionContent(skill.content, req.params.action);
+          if (!actionContent) return res.status(404).json({ error: 'Action not found in skill' });
+
+          res.type('text/markdown').send(actionContent);
+        } catch (e) {
+          res.status(500).json({ error: 'Internal server error' });
+        }
+      });
+
+      // Get full skill content
       app.get('/skills/:name', async (req, res) => {
         try {
           const inventory = await loadInventory(config, configPath);
@@ -152,11 +200,14 @@ program
         }
       });
 
-      app.listen(port, () => {
-        console.log(`Skillporter API listening on port ${port}`);
-        console.log(`- GET /skills`);
-        console.log(`- GET /actions`);
-        console.log(`- GET /skills/:name`);
+      app.listen(port, host, () => {
+        console.log(`Skillporter API listening on ${host}:${port}`);
+        console.log(`  GET /health`);
+        console.log(`  GET /search?q=<query>`);
+        console.log(`  GET /skills`);
+        console.log(`  GET /actions`);
+        console.log(`  GET /skills/:name`);
+        console.log(`  GET /skills/:name/actions/:action`);
       });
     } catch (error) {
       console.error('Error starting server:', error instanceof Error ? error.message : String(error));

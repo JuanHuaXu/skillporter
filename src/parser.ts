@@ -15,6 +15,61 @@ export interface SkillInfo {
   content: string;
 }
 
+/**
+ * Extract just the content under a specific action header (H2/H3).
+ * Stops at the next same-level or higher-level header.
+ * Returns the header line + all content until the next boundary.
+ */
+export function extractActionContent(content: string, actionName: string): string | null {
+  const lines = content.split('\n');
+  const lowerTarget = actionName.toLowerCase();
+  let capturing = false;
+  let captureLevel = 0;
+  const captured: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Check if this line is an H2 or H3 header
+    const h2Match = trimmed.startsWith('## ') && !trimmed.startsWith('### ');
+    const h3Match = trimmed.startsWith('### ');
+
+    if (h2Match || h3Match) {
+      const headerLevel = h2Match ? 2 : 3;
+      const headerText = trimmed.replace(/^##?#\s+/, '').trim();
+
+      if (capturing) {
+        // Stop if we hit a same-level or higher-level header
+        if (headerLevel <= captureLevel) {
+          break;
+        }
+        // Include sub-headers within the section
+        captured.push(line);
+        continue;
+      }
+
+      // Check if this header matches the target action
+      if (headerText.toLowerCase() === lowerTarget) {
+        capturing = true;
+        captureLevel = headerLevel;
+        captured.push(line);
+        continue;
+      }
+    } else if (capturing) {
+      captured.push(line);
+    }
+  }
+
+  if (captured.length === 0) return null;
+
+  // Trim trailing blank lines
+  while (captured.length > 0 && captured[captured.length - 1].trim() === '') {
+    captured.pop();
+  }
+
+  return captured.join('\n');
+}
+
 export async function parseSkillFile(filePath: string, baseDir?: string): Promise<SkillInfo> {
   const contentRaw = await fs.readFile(filePath, 'utf-8');
   const { data, content } = matter(contentRaw);
