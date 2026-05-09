@@ -89,7 +89,10 @@ export async function indexSkills(config: SkillporterConfig, configPath?: string
         deep: 5
       });
       for (const f of dirFiles) {
-        fileToBaseDir.set(f, fullDir);
+        // Security: Double-check path safety
+        if (isPathSafe(fullDir, f)) {
+          fileToBaseDir.set(f, fullDir);
+        }
       }
     } catch (e) {
       console.warn(`Could not access skill directory: ${fullDir}`);

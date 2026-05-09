@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.skillporter.server</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/clawdius/homebrew/bin/node</string>
+		<string>/Users/clawdius/Projects/skillporter/dist/index.js</string>
+		<string>serve</string>
+		<string>--port</string>
+		<string>3000</string>
+		<string>--config</string>
+		<string>/Users/clawdius/Projects/skillporter/skillporter.json</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/Users/clawdius/Projects/skillporter</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>/Users/clawdius/.openclaw/logs/skillporter-stdout.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/clawdius/.openclaw/logs/skillporter-stderr.log</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/Users/clawdius/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+</dict>
+</plist>

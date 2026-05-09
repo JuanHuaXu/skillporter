@@ -1,63 +1,73 @@
-# Skillporter 🧳🤖
+# Skillporter 🌌
 
-Skillporter is a dedicated **Skill Indexer and Server** for Markdown-based agent skills. It parses Markdown files, extracts "action words" (commands), and serves them to agents.
+Skillporter is a high-performance Markdown skill indexer and discovery engine designed for AI agents. It decouples massive skill libraries from the agent's immediate context, allowing for O(1) context scaling through on-demand retrieval.
 
-## Features
+## 🏗️ Architecture
 
-- **Action Extraction**: Automatically identifies actions defined in `###` (H3) headers.
-- **Metadata Support**: Parses skill name and description from Markdown front-matter.
-- **Fast Indexing**: Uses glob patterns to scan multiple directories and builds a persistent JSON inventory.
-- **Flexible Retrieval**: Get the full Markdown content for any skill or specific action word.
-- **HTTP API**: Serve the skill inventory and documentation to remote agents.
+- **Sidecar (Server)**: A Node.js background service that indexes Markdown files and serves search/retrieval requests over HTTP.
+- **OpenClaw Plugin (Client)**: A native extension that adds `skill_search` and `skill_load` capabilities to any OpenClaw agent.
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Initialize
+### Installation
+
+We provide a unified setup script to configure the sidecar and the plugin in one go:
+
 ```bash
-npx skillporter init
+git clone https://github.com/your-repo/skillporter.git
+cd skillporter
+./scripts/setup.sh
 ```
 
-### 2. Configure `skillporter.json`
+This will:
+1. Build the Skillporter CLI.
+2. Register the sidecar as a macOS LaunchAgent (Port 3000).
+3. Symlink the OpenClaw plugin into your extensions folder.
+
+### Configuration
+
+The sidecar uses `skillporter.json` in the root directory:
+
 ```json
 {
-  "skillDirs": ["./my-skills", "../other-repo/skills"],
+  "skillDirs": ["./skills"],
   "includePatterns": ["**/*.md"],
-  "outDir": ".skillporter"
+  "excludePatterns": ["**/node_modules/**", "README.md"],
+  "port": 3000,
+  "host": "127.0.0.1"
 }
 ```
 
-### 3. Index Skills
+## 🧩 OpenClaw Integration
+
+Once installed, your agent gains two new tools:
+
+1.  **`skill_search(query)`**: Returns a ranked list of relevant skills and action-words.
+2.  **`skill_load(skill, [action])`**: Loads the full instructions for a skill (or a specific action) directly into the agent's history.
+
+### Context Management (Librarian Mode)
+Skillporter uses a "Librarian" model. Instead of bloating the system prompt, it returns instructions as tool results. This allows your **Context Engine (e.g., LibraVDB)** to naturally manage the memory and prune instructions when they are no longer relevant.
+
+## 🔒 Security
+
+- **Path Isolation**: Files are strictly bound to configured `skillDirs`.
+- **DoS Protection**: Maximum file size limit of 1MB per skill.
+- **Rate Limiting**: Built-in protection against request flooding (200 req / 15 min).
+- **Hardened Sanitization**: Strict regex-based input validation for all API parameters.
+
+## 🛠️ Development
+
+### Building
 ```bash
-npx skillporter index
+npm run build
 ```
 
-### 4. List Actions
+### Manual Indexing
 ```bash
-npx skillporter list
+skillporter index
 ```
 
-### 5. Get Skill Content
+### Running the API manually
 ```bash
-npx skillporter get my_action_name
+skillporter serve
 ```
-
-### 6. Serve API
-```bash
-npx skillporter serve --port 3000
-```
-
-## How it Works
-
-Skillporter looks for Markdown files in the configured `skillDirs`. For each file, it:
-1.  Extracts metadata (name, description) from the front-matter.
-2.  Scans for H3 headers (`### `) and treats them as "Action Words".
-3.  Maps these actions back to the source file for instant retrieval.
-
-## API Endpoints
-
-- `GET /skills`: List all discovered skills with metadata.
-- `GET /actions`: List all discovered action words across all skills.
-- `GET /skills/:name`: Retrieve the full Markdown content of a specific skill.
-
-## License
-MIT

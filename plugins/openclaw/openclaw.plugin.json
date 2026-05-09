@@ -1,0 +1,35 @@
+{
+  "id": "skillporter",
+  "name": "Skillporter",
+  "description": "On-demand skill search and ephemeral context injection from Skillporter index",
+  "version": "0.1.0",
+  "kind": ["tool"],
+  "activation": {
+    "onStartup": true,
+    "onCommands": ["skill_search", "skill_load", "skill_done"]
+  },
+  "contracts": {
+    "tools": ["skill_search", "skill_load", "skill_done"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "default": "http://127.0.0.1:3000",
+        "description": "Skillporter HTTP server endpoint"
+      },
+      "ttl": {
+        "type": "number",
+        "default": 2,
+        "description": "Number of turns to keep skill content in context after load"
+      },
+      "maxActiveSkills": {
+        "type": "number",
+        "default": 3,
+        "description": "Maximum number of skills injected into context simultaneously"
+      }
+    }
+  }
+}

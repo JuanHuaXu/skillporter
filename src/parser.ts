@@ -71,6 +71,12 @@ export function extractActionContent(content: string, actionName: string): strin
 }
 
 export async function parseSkillFile(filePath: string, baseDir?: string): Promise<SkillInfo> {
+  // Security: Check file size before reading (DoS protection)
+  const stats = await fs.stat(filePath);
+  if (stats.size > 1024 * 1024) {
+    throw new Error(`File too large: ${filePath} (${stats.size} bytes). Max limit is 1MB.`);
+  }
+
   const contentRaw = await fs.readFile(filePath, 'utf-8');
   const { data, content } = matter(contentRaw);
 

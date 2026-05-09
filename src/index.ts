@@ -174,10 +174,11 @@ program
         try {
           const inventory = await loadInventory(config, configPath);
           const sanitizedName = req.params.name.replace(/[^\w\-\/ ]/g, '').toLowerCase();
+          const sanitizedAction = req.params.action.replace(/[^\w\-\/ ]/g, '');
           const skill = inventory.skills.find(s => s.name.toLowerCase() === sanitizedName);
           if (!skill) return res.status(404).json({ error: 'Skill not found' });
 
-          const actionContent = extractActionContent(skill.content, req.params.action);
+          const actionContent = extractActionContent(skill.content, sanitizedAction);
           if (!actionContent) return res.status(404).json({ error: 'Action not found in skill' });
 
           res.type('text/markdown').send(actionContent);
@@ -234,18 +235,22 @@ program
   });
 
 async function loadConfig(configPath: string) {
-  // Security: Prevent traversal in config path argument
-  if (configPath.includes('..') && !configPath.startsWith(process.cwd())) {
+  // Security: Strictly bound config loading to the current working directory or absolute paths
+  const resolvedPath = path.resolve(process.cwd(), configPath);
+  if (!resolvedPath.startsWith(process.cwd())) {
      throw new Error('Security Error: Configuration path must be within the project workspace.');
   }
 
-  const fullPath = path.resolve(process.cwd(), configPath);
-  const configRaw = await fs.readFile(fullPath, 'utf-8');
-  const configJson = parse(configRaw);
-  return {
-    config: SkillporterConfigSchema.parse(configJson),
-    configPath: fullPath
-  };
+  try {
+    const configRaw = await fs.readFile(resolvedPath, 'utf-8');
+    const configJson = parse(configRaw);
+    return {
+      config: SkillporterConfigSchema.parse(configJson),
+      configPath: resolvedPath
+    };
+  } catch (err) {
+    throw new Error(`Failed to load config at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 program.parse();
