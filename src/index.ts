@@ -107,10 +107,10 @@ program
       // Security: Add Helmet for secure headers
       app.use(helmet());
 
-      // Security: Rate limiting to prevent DoS
+      // Security: Rate limiting to prevent DoS/loops
       const limiter = rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 200, // Limit each IP to 200 requests per window
+        windowMs: config.rateLimitWindowMs,
+        max: config.rateLimitMax,
         standardHeaders: true,
         legacyHeaders: false,
         message: 'Too many requests, please try again later.'

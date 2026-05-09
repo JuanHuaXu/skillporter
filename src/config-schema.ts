@@ -8,6 +8,8 @@ export const SkillporterConfigSchema = z.object({
   port: z.number().default(3000),
   host: z.string().default('127.0.0.1'),
   maxSearchResults: z.number().default(20),
+  rateLimitWindowMs: z.number().default(15 * 60 * 1000), // 15 minutes
+  rateLimitMax: z.number().default(1000), // Higher default for local use
 });
 
 export type SkillporterConfig = z.infer<typeof SkillporterConfigSchema>;
