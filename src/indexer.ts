@@ -140,7 +140,13 @@ export async function indexSkills(config: SkillporterConfig, configPath?: string
 }
 
 export async function loadInventory(config: SkillporterConfig, configPath?: string): Promise<SkillInventory> {
-  const inventoryPath = path.join(path.resolve(process.cwd(), config.outDir), 'inventory.json');
+  const inventoryDir = path.resolve(process.cwd(), config.outDir);
+  const inventoryPath = path.join(inventoryDir, 'inventory.json');
+  
+  // Security: Ensure inventory path is within workspace
+  if (!inventoryPath.startsWith(process.cwd())) {
+    throw new Error('Security Error: inventory path must be within the project workspace.');
+  }
   
   try {
     const raw = await fs.readFile(inventoryPath, 'utf-8');

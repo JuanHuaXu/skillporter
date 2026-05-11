@@ -19,52 +19,50 @@ export function searchInventory(
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
 
-  const results: SearchResult[] = [];
+  const skillResults = new Map<string, SearchResult>();
 
   for (const skill of inventory.skills) {
     const skillNameLower = skill.name.toLowerCase();
     const descLower = (skill.description || '').toLowerCase();
 
     // Score skill-level match
-    let skillScore = 0;
+    let baseScore = 0;
     for (const token of tokens) {
-      if (skillNameLower.includes(token)) skillScore += 3;
-      if (descLower.includes(token)) skillScore += 2;
+      if (skillNameLower.includes(token)) baseScore += 5;
+      if (descLower.includes(token)) baseScore += 2;
     }
 
-    // Score each action
+    // Find the best action match within this skill
+    let bestActionName = '';
+    let highestActionScore = baseScore;
+
     for (const action of skill.actions) {
       const actionLower = action.name.toLowerCase();
-      let actionScore = skillScore;
+      let actionScore = baseScore;
 
       for (const token of tokens) {
         if (actionLower.includes(token)) actionScore += 5;
-        // Exact match bonus
         if (actionLower === token) actionScore += 10;
       }
 
-      if (actionScore > 0) {
-        results.push({
-          skill: skill.name,
-          action: action.name,
-          description: skill.description || '',
-          score: actionScore
-        });
+      if (actionScore > highestActionScore) {
+        highestActionScore = actionScore;
+        bestActionName = action.name;
       }
     }
 
-    // If the skill itself matches but has no action hits, include a skill-level entry
-    if (skillScore > 0 && !results.some(r => r.skill === skill.name)) {
-      results.push({
+    if (highestActionScore > 0) {
+      skillResults.set(skill.name, {
         skill: skill.name,
-        action: '',
+        action: bestActionName,
         description: skill.description || '',
-        score: skillScore
+        score: highestActionScore
       });
     }
   }
 
-  // Sort by score descending, then by name for stability
+  // Convert map to array and sort
+  const results = Array.from(skillResults.values());
   results.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     return a.skill.localeCompare(b.skill);
@@ -78,5 +76,5 @@ function tokenize(query: string): string[] {
     .toLowerCase()
     .split(/[\s,_\-\/]+/)
     .map(t => t.trim())
-    .filter(t => t.length > 1);
+    .filter(t => t.length > 0);  // Removed t.length > 1 — single-char tokens are valid
 }

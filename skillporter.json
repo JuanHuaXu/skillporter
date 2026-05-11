@@ -5,7 +5,7 @@
   "outDir": ".skillporter",
   "port": 3000,
   "host": "127.0.0.1",
-  "maxSearchResults": 20,
+  "maxSearchResults": 5,
   "rateLimitWindowMs": 900000,
   "rateLimitMax": 1000
 }

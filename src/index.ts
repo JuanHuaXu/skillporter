@@ -82,7 +82,7 @@ program
       if (skill) {
         console.log(skill.content);
       } else {
-        console.error(`Skill or action '${action}' not found.`);
+        console.error('Skill or action not found.');
         process.exit(1);
       }
     } catch (error) {
@@ -102,18 +102,34 @@ program
       const { config, configPath } = await loadConfig(options.config);
       const app = express();
       const port = options.port ? parseInt(options.port, 10) : config.port;
+      if (options.port) {
+        if (isNaN(port) || port < 1 || port > 65535 || String(port) !== options.port.trim()) {
+          console.error('Error: --port must be a valid integer between 1 and 65535.');
+          process.exit(1);
+        }
+      }
       const host = options.host || config.host;
+
+      // Security: Validate port and host
+      if (options.port && (isNaN(port) || port < 1024 || port > 65535)) {
+        console.error('Error: Port must be between 1024 and 65535.');
+        process.exit(1);
+      }
+      if (host && !/^\d{1,3}(\.\d{1,3}){3}$|^\[?[0-9a-fA-F:]+\)?$/.test(host)) {
+        console.error('Error: Invalid host format.');
+        process.exit(1);
+      }
 
       // Security: Add Helmet for secure headers
       app.use(helmet());
 
-      // Security: Rate limiting to prevent DoS/loops
+      // Security: Rate limiting to prevent DoS/loops (reduced from permissive defaults)
       const limiter = rateLimit({
         windowMs: config.rateLimitWindowMs,
         max: config.rateLimitMax,
         standardHeaders: true,
         legacyHeaders: false,
-        message: 'Too many requests, please try again later.'
+        message: 'Too many requests, please try again later.',
       });
       app.use(limiter);
 
@@ -227,6 +243,13 @@ program
         excludePatterns: ["**/node_modules/**", "**/dist/**", "**/README.md"],
         outDir: ".skillporter"
       };
+      try {
+        await fs.access('skillporter.json');
+        console.error('Error: skillporter.json already exists. Remove it first if you want to re-initialize.');
+        process.exit(1);
+      } catch {
+        // File does not exist, proceed
+      }
       await fs.writeFile('skillporter.json', JSON.stringify(defaultConfig, null, 2));
       console.log('Created skillporter.json');
     } catch (e) {
