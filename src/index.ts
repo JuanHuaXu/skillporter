@@ -120,6 +120,12 @@ program
         process.exit(1);
       }
 
+      // Security: Warn when binding to a non-localhost address
+      const isLocalhost = host === '127.0.0.1' || host === '::1' || host === 'localhost';
+      if (!isLocalhost) {
+        console.warn(`Warning: Binding to ${host}. The HTTP API has no authentication — exposing it to network interfaces beyond localhost is a security risk. Consider binding to 127.0.0.1.`);
+      }
+
       // Security: Add Helmet for secure headers
       app.use(helmet());
 
