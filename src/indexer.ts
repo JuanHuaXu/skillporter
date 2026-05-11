@@ -12,19 +12,32 @@ export interface SkillInventory {
   skills: SkillInfo[];
 }
 
-// Security: Helper to ensure a path is within a base directory
-function isPathSafe(baseDir: string, targetPath: string): boolean {
-  const relative = path.relative(baseDir, targetPath);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+// Security: Helper to ensure a path is within a base directory.
+// Resolves symlinks and normalizes paths to prevent traversal attacks.
+async function isPathSafe(baseDir: string, targetPath: string): Promise<boolean> {
+  try {
+    const [resolvedBase, resolvedTarget] = await Promise.all([
+      fs.realpath(baseDir),
+      fs.realpath(targetPath),
+    ]);
+    const relative = path.relative(resolvedBase, resolvedTarget);
+    return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  } catch {
+    // If realpath fails (file doesn't exist yet), fall back to string comparison.
+    const relative = path.relative(path.resolve(baseDir), path.resolve(targetPath));
+    return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  }
 }
 
 export async function calculateHash(filePath: string): Promise<string> {
   try {
-    // Security: Validate path before reading
-    if (filePath.includes('..') && !filePath.startsWith(process.cwd())) {
+    // Security: Resolve and verify path is within cwd before reading.
+    const resolved = path.resolve(filePath);
+    const cwd = process.cwd();
+    if (!resolved.startsWith(path.resolve(cwd) + path.sep) && resolved !== path.resolve(cwd)) {
       return '';
     }
-    const content = await fs.readFile(filePath);
+    const content = await fs.readFile(resolved);
     return crypto.createHash('sha512').update(content).digest('hex');
   } catch {
     return '';
@@ -89,8 +102,8 @@ export async function indexSkills(config: SkillporterConfig, configPath?: string
         deep: 5
       });
       for (const f of dirFiles) {
-        // Security: Double-check path safety
-        if (isPathSafe(fullDir, f)) {
+        // Security: Double-check path safety (resolves symlinks)
+        if (await isPathSafe(fullDir, f)) {
           fileToBaseDir.set(f, fullDir);
         }
       }
