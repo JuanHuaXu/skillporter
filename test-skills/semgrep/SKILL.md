@@ -1,16 +1,40 @@
+---
+name: semgrep
+description: Use Semgrep for semantic code analysis, security audits, bug hunting, finding known vulnerability patterns, enforcing architectural rules, and applying autofixes where appropriate.
+---
+
 # Security & Bug Hunting (Semgrep)
 
 Use Semgrep to perform semantic analysis and security auditing. Semgrep excels at finding complex bugs and security vulnerabilities using its vast registry of community rules.
 
+Treat Semgrep results as leads until confirmed. Before proposing or applying a nontrivial fix, use `patch-reasoning-audit` to verify root cause, scope, sibling paths, and false positives.
+
 ## Prerequisites
-- Semgrep requires Python or can be installed via Homebrew.
+- Semgrep requires Python 3.10+ for native CLI installs, or Docker for containerized scans.
 - Internet access is required to pull the latest rules from the Semgrep Registry unless running in offline mode.
 
 ## Actions
 
 ### install
-Install Semgrep globally.
-`brew install semgrep` or `python3 -m pip install semgrep`
+Install Semgrep globally or use Docker for isolated scans.
+
+**macOS**:
+- Homebrew: `brew install semgrep`
+- pipx: `pipx install semgrep`
+- uv: `uv tool install semgrep`
+
+**Linux**:
+- pipx: `pipx install semgrep`
+- uv: `uv tool install semgrep`
+- Docker: `docker run --rm -v "${PWD}:/src" semgrep/semgrep semgrep scan --config auto /src`
+
+**Windows**:
+- pipx: `pipx install semgrep`
+- uv: `uv tool install semgrep`
+- Docker Desktop: `docker run --rm -v "%cd%:/src" semgrep/semgrep semgrep scan --config auto /src`
+
+**Verify**: `semgrep --version`
+**Official install docs**: `https://semgrep.dev/docs/getting-started/quickstart`
 
 ### scan
 Perform a full security and quality scan using the community registry.
@@ -41,3 +65,4 @@ Run a scan and automatically apply suggested fixes.
 - **Ignore**: Semgrep automatically respects `.gitignore`, but you can use `.semgrepignore` for specific exclusions.
 - **Output**: For large projects, use `--json` if you need to parse results programmatically.
 - **Pattern Syntax**: Semgrep uses `...` for "anything in between" and `$VAR` for metavariables, similar to ast-grep but optimized for bug detection.
+- **Autofix Boundary**: Use `--autofix` only for mechanical, rule-local changes. For uncertain behavior, prove the invariant first.

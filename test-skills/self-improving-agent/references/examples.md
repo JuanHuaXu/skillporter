@@ -62,12 +62,12 @@ Use `pnpm install` for this project.
 ### Resolution
 - **Resolved**: 2025-01-15T14:30:00Z
 - **Commit/PR**: N/A - knowledge update
-- **Notes**: Added to CLAUDE.md for future reference
+- **Notes**: Added to workspace instructions for future reference
 
 ---
 ```
 
-## Learning: Promoted to CLAUDE.md
+## Learning: Promoted to Workspace Instructions
 
 ```markdown
 ## [LRN-20250115-003] best_practice
@@ -75,7 +75,7 @@ Use `pnpm install` for this project.
 **Logged**: 2025-01-15T16:00:00Z
 **Priority**: high
 **Status**: promoted
-**Promoted**: CLAUDE.md
+**Promoted**: AGENTS.md
 **Area**: backend
 
 ### Summary

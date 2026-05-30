@@ -1,6 +1,6 @@
 # Taint Analysis & Data Flow
 
-Use this skill to identify "Taint Paths" where untrusted user input (Source) reaches a dangerous operation (Sink) without proper sanitization.
+Use this reference to identify taint paths where untrusted input reaches a dangerous operation without the invariant needed for a safe patch.
 
 ## The Researcher's Checklist
 
@@ -12,7 +12,7 @@ Look for any point where external data enters the system:
 - `process.env` (Environment variables)
 
 ### 2. Identify Sinks (Dangerous Operations)
-Look for operations that can be exploited if the data is "dirty":
+Look for operations that become unsafe if attacker-controlled data reaches them:
 - **Command Injection**: `child_process.exec()`, `spawn()`, `system()`
 - **Code Injection**: `eval()`, `new Function()`, `setTimeout(string)`
 - **SQL Injection**: `db.query()`, `connection.execute()` (with string concatenation)
@@ -32,6 +32,6 @@ Pick a Source and trace every variable it touches until it reaches a Sink.
 Pick a dangerous Sink (like `exec`) and work backwards to see where its arguments come from.
 
 ## Security & Best Practices
-- **Assume Evil**: Always assume the user input is an exploit string (e.g., `; rm -rf /`).
+- **Assume Hostile Input**: Model user input as attacker-controlled, but keep tests non-destructive and patch-focused.
 - **Logic Flaws**: Look for places where "Privilege Escalation" can happen (e.g., a user changing their own `role` field).
 - **Secret Leaks**: Check if "dirty" data is accidentally logged to `console.log` or a file.

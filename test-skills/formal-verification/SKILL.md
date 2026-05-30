@@ -19,6 +19,7 @@ Formal verification involves treating code as a mathematical object. By converti
 2. **Translate to Math**: Convert `if/else` to boolean logic and arithmetic to equations.
 3. **Define the Property**: State what must be true (e.g., `output > input` for an incrementer).
 4. **Solve for Contradiction**: Look for any input that makes the Property false.
+5. **Patch Gate**: If the proof drives a code change outside the modeled unit, use `patch-reasoning-audit` to confirm the model still matches the implementation boundary.
 
 ### extract_formula
 Use this action to turn a simple code block into a mathematical representation.

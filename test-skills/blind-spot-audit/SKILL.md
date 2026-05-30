@@ -7,6 +7,8 @@ description: Suite for identifying "Shadow Attack Surfaces" and implicitly trust
 
 Blind spot auditing is the practice of looking for vulnerabilities in areas that are traditionally ignored or considered "safe." This includes internal APIs, error handlers, and environmental assumptions.
 
+Blind-spot findings are hypotheses until the boundary failure is proven. Before requesting changes or patching, use `patch-reasoning-audit` to compare at least one sibling path that uses the same trust mechanism.
+
 ## Sub-Skills
 - [Error Paths](./error-paths.md): Audit the "Dark Logic" inside failure and recovery handlers.
 - [Integrations](./integrations.md): Audit trust boundaries between internal code and external services.
@@ -17,6 +19,7 @@ Blind spot auditing is the practice of looking for vulnerabilities in areas that
 2. **Audit the Negatives**: Look for missing `default` cases, missing error handlers, and unhandled promise rejections.
 3. **Trace Side Effects**: Follow data not just to its intended Sink, but to its "Shadow Sinks" (Logs, Caches, Analytics).
 4. **Environment Stress**: Audit how the code behaves when environment variables are missing or malformed.
+5. **Patch Gate**: If a fix is needed and causality is uncertain, state the broken invariant and falsifier before editing.
 
 ### find_implicit_trust
 Use this action to find where the code trusts data from a "Safe" source.

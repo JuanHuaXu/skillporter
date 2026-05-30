@@ -1,0 +1,7 @@
+interface:
+  display_name: "Patch Reasoning Audit"
+  short_description: "Stress-test patch reasoning before coding"
+  default_prompt: "Use $patch-reasoning-audit to audit this proposed fix before writing code."
+
+policy:
+  allow_implicit_invocation: true

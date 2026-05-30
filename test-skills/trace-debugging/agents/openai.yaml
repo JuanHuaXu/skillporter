@@ -1,0 +1,7 @@
+interface:
+  display_name: "Trace Debugging"
+  short_description: "Trace runtime values before patching"
+  default_prompt: "Use $trace-debugging to trace the runtime path before proposing a fix."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,3 +1,8 @@
+---
+name: scope-reduction
+description: Use to decompose large objectives into small, verifiable chunks while preserving boundaries. Use patch-reasoning-audit inside any chunk that involves uncertain bug causality, scope, or evidence.
+---
+
 # Recursive Scope Reduction
 
 Use this skill to decompose massive, complex objectives into "One-Shot" manageable chunks. This prevents context-bloat and ensures high-precision execution.
@@ -13,6 +18,7 @@ Take a high-level objective and break it into a tree of sub-tasks.
 Pick exactly ONE leaf node from the Task Tree. Ignore all other tasks.
 - **Mental State**: You are now a specialist for ONLY this sub-task.
 - **Context**: Read only the files necessary for this specific chunk.
+- **Patch Reasoning**: If the leaf is a bug/security/performance/regression fix and root cause is uncertain, run `patch-reasoning-audit` before editing.
 
 ### 3. Execute & Verify (Conquer)
 Perform the task and run a validation (e.g., test or manual check).
