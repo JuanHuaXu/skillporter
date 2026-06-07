@@ -372,18 +372,40 @@ function summarizeMarkdown(markdown: string): string {
     .map(line => line.trim())
     .filter(line => line && !line.startsWith('#') && !line.startsWith('```'));
 
-  const text = lines
-    .slice(0, 4)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  return truncate(text, 220);
+  return summarizeUnits(lines, 260);
 }
 
 function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) return normalized;
+
+  const sentences = splitSentences(normalized);
+  const summary = summarizeUnits(sentences, maxLength);
+  if (summary) return summary;
+
+  return normalized.split(/\s+/).slice(0, 24).join(' ');
+}
+
+function summarizeUnits(units: string[], maxLength: number): string {
+  const selected: string[] = [];
+  let length = 0;
+
+  for (const unit of units.map(unit => unit.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
+    const nextLength = length + unit.length + (selected.length > 0 ? 1 : 0);
+    if (nextLength > maxLength) {
+      if (selected.length > 0) break;
+      if (unit.length <= maxLength) selected.push(unit);
+      break;
+    }
+    selected.push(unit);
+    length = nextLength;
+  }
+
+  return selected.join(' ');
+}
+
+function splitSentences(value: string): string[] {
+  return value.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g)?.map(sentence => sentence.trim()) || [];
 }
 
 program.parse();
