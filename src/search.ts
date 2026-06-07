@@ -12,6 +12,7 @@ export interface SearchResult {
 interface ParsedQuery {
   phrases: string[];
   tokens: string[];
+  conceptKeys: string[];
   expandedPhrases: string[];
   expandedTokens: string[];
 }
@@ -46,6 +47,7 @@ export function searchInventory(
   for (const skill of inventory.skills) {
     const score = scoreSkill(skill, parsed);
     if (score.total <= 0) continue;
+    if (!passesAdmissionGate(skill, parsed)) continue;
     if (!passesPhraseQueryGate(skill, parsed)) continue;
 
     results.push({
@@ -64,6 +66,23 @@ export function searchInventory(
   });
 
   return results.slice(0, maxResults);
+}
+
+function passesAdmissionGate(skill: SkillInfo, query: ParsedQuery): boolean {
+  const search = skill.search || buildSearchFallback(skill);
+  if (query.conceptKeys.length > 0 && !hasHighSignalConceptMatch(search, query)) return false;
+  if (query.phrases.some(phrase => search.all.includes(phrase))) return true;
+  if (query.tokens.some(token => hasToken(search.all, token))) return true;
+
+  return query.expandedPhrases
+    .filter(phrase => phrase.split(' ').length >= 3)
+    .some(phrase => search.all.includes(phrase));
+}
+
+function hasHighSignalConceptMatch(search: ReturnType<typeof buildSearchFallback>, query: ParsedQuery): boolean {
+  const highSignal = `${search.name} ${search.description} ${search.actions}`;
+  if (query.conceptKeys.some(key => matchQueryKey(highSignal, key))) return true;
+  return query.expandedPhrases.some(phrase => matchQueryKey(highSignal, phrase));
 }
 
 function passesPhraseQueryGate(skill: SkillInfo, query: ParsedQuery): boolean {
@@ -189,9 +208,11 @@ function parseQuery(query: string, concepts: Record<string, string[]> = {}): Par
     ...quotedPhrases,
     ...(rawPhrase.split(' ').length > 1 ? [rawPhrase] : [])
   ]));
+  const conceptKeys = [...new Set([...tokens, ...tokenNgrams(tokens), ...phrases])]
+    .filter(key => Array.isArray(concepts[key]) && concepts[key].length > 0);
   const expansions = expandQuery(tokens, phrases, concepts);
 
-  return { phrases, tokens, ...expansions };
+  return { phrases, tokens, conceptKeys, ...expansions };
 }
 
 function tokenize(query: string): string[] {
@@ -267,6 +288,10 @@ function countToken(field: string, token: string): number {
 
 function hasToken(field: string, token: string): boolean {
   return countToken(field, token) > 0;
+}
+
+function matchQueryKey(field: string, key: string): boolean {
+  return key.includes(' ') ? field.includes(key) : hasToken(field, key);
 }
 
 function stemToken(token: string): string {
