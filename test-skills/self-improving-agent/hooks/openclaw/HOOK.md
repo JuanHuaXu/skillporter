@@ -1,5 +1,5 @@
 ---
-name: self-improvement
+name: self-improvement-hook
 description: "Injects self-improvement reminder during agent bootstrap"
 metadata: {"openclaw":{"emoji":"🧠","events":["agent:bootstrap"]}}
 ---

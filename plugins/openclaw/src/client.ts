@@ -4,6 +4,7 @@
 
 export interface SearchResult {
   skill: string;
+  kind?: 'skill' | 'reference';
   action: string;
   description: string;
   score: number;
@@ -11,7 +12,9 @@ export interface SearchResult {
 
 export interface HealthStatus {
   ok: boolean;
+  entryCount: number;
   skillCount: number;
+  referenceCount: number;
   actionCount: number;
 }
 

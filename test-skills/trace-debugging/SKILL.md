@@ -15,10 +15,11 @@ Use this skill when the question is "what actually happens at runtime?" Traces a
 2. Map the static path: entry point, key functions, state holders, I/O boundaries, and exit point.
 3. Choose the smallest runtime probe that can falsify a hypothesis.
 4. Trace at least two different use cases of the same mechanism when overfitting is possible.
-5. Capture structured output: trace id, timestamp/order, variable names, types, sizes, and boundary labels.
-6. Prefer tests, mocks, or local fixtures over live production data.
-7. Patch only after the trace identifies the broken invariant.
-8. Remove or gate temporary probes before finishing.
+5. Trace both the storage boundary and the sink boundary when they differ. For agent bugs, record whether data is persisted, assembled, and provider-visible; for UI bugs, record whether data is stored, rendered, and user-visible.
+6. Capture structured output: trace id, timestamp/order, lifecycle phase, variable names, types, sizes, and boundary labels.
+7. Prefer tests, mocks, or local fixtures over live production data.
+8. Patch only after the trace identifies the broken invariant.
+9. Remove or gate temporary probes before finishing.
 
 ## Dual Trace Packet
 
@@ -53,6 +54,7 @@ trace_packet:
       boundary: "cache|db|fs|network|model|none"
   state_flow:
     - at: A
+      phase: "live|historical|ingest|replay|cache|sink"
       vars:
         input_id: "redacted-or-synthetic"
         owner: "expected owner/scope"
@@ -77,6 +79,16 @@ trace_packet:
 ```
 
 Use Mermaid only as an optional visualization after the KV packet, not as the canonical trace.
+
+## Lifecycle Boundary Probes
+
+When a bug crosses memory, replay, prompt assembly, tool protocol, cache, or queue boundaries, use paired probes instead of a single trace:
+
+- **Live path:** Fresh/current-turn data that must remain available to the next consumer.
+- **Historical path:** Recalled, replayed, cached, or persisted data that may need sanitization or summarization.
+- **Negative control:** Ordinary text or unrelated state that should be unchanged.
+
+Use synthetic sentinels rather than private data. Record roles, block types, ids, lengths, hashes, and small redacted snippets. A probe that only shows "the transcript contains X" is incomplete until it also shows whether the sink consumed X.
 
 ## Probe Rules
 

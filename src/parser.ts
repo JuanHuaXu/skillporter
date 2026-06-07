@@ -10,9 +10,19 @@ export interface ActionInfo {
 export interface SkillInfo {
   name: string;
   path: string;
+  kind: 'skill' | 'reference';
   description?: string;
   actions: ActionInfo[];
   content: string;
+  search: SearchDocument;
+}
+
+export interface SearchDocument {
+  name: string;
+  description: string;
+  actions: string;
+  body: string;
+  all: string;
 }
 
 /**
@@ -142,20 +152,51 @@ export async function parseSkillFile(filePath: string, baseDir?: string): Promis
     }
   }
 
-  // Calculate hierarchical name
-  let name = data.name || (data as any).title;
+  const relativePath = baseDir
+    ? path.relative(baseDir, filePath).replace(/\\/g, '/')
+    : path.basename(filePath);
+  const isCanonicalSkill = path.basename(filePath) === 'SKILL.md';
+  const kind: SkillInfo['kind'] = isCanonicalSkill ? 'skill' : 'reference';
+
+  // Canonical skills are allowed to choose their public name via frontmatter.
+  // Supporting docs use path-based names so references and hooks never shadow
+  // the parent skill even when they carry their own metadata.
+  let name = isCanonicalSkill ? data.name || (data as any).title : '';
   if (!name && baseDir) {
-    const relativePath = path.relative(baseDir, filePath);
-    name = relativePath.replace(/\.md$/, '').replace(/\\/g, '/');
+    name = relativePath.replace(/\.md$/, '');
   } else if (!name) {
     name = filePath.split('/').pop()?.replace('.md', '') || 'unknown';
   }
 
+  const description = data.description || '';
+  const actionText = actions.map(action => action.name).join(' ');
+  const bodyText = content.replace(/^---[\s\S]*?---\s*/, '');
+  const search = {
+    name: normalizeSearchText(name),
+    description: normalizeSearchText(description),
+    actions: normalizeSearchText(actionText),
+    body: normalizeSearchText(bodyText),
+    all: normalizeSearchText(`${name} ${description} ${actionText} ${bodyText}`)
+  };
+
   return {
     name,
     path: filePath,
-    description: data.description || '',
+    kind,
+    description,
     actions,
-    content: contentRaw
+    content: contentRaw,
+    search
   };
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[_/.-]+/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

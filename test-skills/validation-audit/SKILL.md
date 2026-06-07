@@ -19,6 +19,7 @@ Before patching a validation finding, use `patch-reasoning-audit` when multiple 
 3. **Audit "Escape Hatches"**: Look for `as any`, `(T)(void*)`, or `unsafe` blocks that bypass the type system.
 4. **Test Boundary Cases**: Try to inject values that satisfy the *type* but violate the *logic* (e.g., negative numbers for an unsigned type).
 5. **Compare Representations**: Check sibling representations of the same data, such as schema input vs stored data vs rendered prompt, before choosing the patch boundary.
+6. **Validate Phase Semantics**: A value can be well-typed and still invalid for its lifecycle phase. Sanitizers and normalizers should state whether they apply to live input, historical replay, retrieved memory, stored records, or rendered/provider-visible output.
 
 ### audit_boundary
 Use this action to identify a data boundary and verify its validation logic.

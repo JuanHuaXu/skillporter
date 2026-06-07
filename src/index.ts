@@ -26,9 +26,11 @@ program
     try {
       const { config, configPath } = await loadConfig(options.config);
       const inventory = await indexSkills(config, configPath);
-      console.log(`Indexed ${inventory.skills.length} skills.`);
+      const skillCount = inventory.skills.filter(s => s.kind === 'skill').length;
+      const referenceCount = inventory.skills.filter(s => s.kind === 'reference').length;
+      console.log(`Indexed ${inventory.skills.length} entries (${skillCount} skills, ${referenceCount} references).`);
       for (const skill of inventory.skills) {
-        console.log(`  - ${skill.name} (${skill.actions.length} actions)`);
+        console.log(`  - ${skill.name} [${skill.kind}] (${skill.actions.length} actions)`);
       }
     } catch (error) {
       console.error('Error indexing skills:', error instanceof Error ? error.message : String(error));
@@ -47,12 +49,12 @@ program
       console.log('Action Words Inventory:');
       for (const skill of inventory.skills) {
         if (skill.actions.length > 0) {
-          console.log(`\n[${skill.name}]`);
+          console.log(`\n[${skill.name}] [${skill.kind}]`);
           for (const action of skill.actions) {
             console.log(`  - ${action.name} (line ${action.line})`);
           }
         } else {
-          console.log(`\n[${skill.name}] (no actions found)`);
+          console.log(`\n[${skill.name}] [${skill.kind}] (no actions found)`);
         }
       }
     } catch (error) {
@@ -74,13 +76,22 @@ program
       // Security: Sanitize input name to prevent any unexpected lookup behavior
       const sanitizedName = action.replace(/[^\w\-\/ ]/g, '').toLowerCase();
 
-      const skill = inventory.skills.find(s => 
-        s.name.toLowerCase() === sanitizedName || 
-        s.actions.some(a => a.name.toLowerCase() === sanitizedName)
-      );
+      const exactSkill = inventory.skills.find(s => s.name.toLowerCase() === sanitizedName);
+      if (exactSkill) {
+        console.log(exactSkill.content);
+        return;
+      }
 
-      if (skill) {
-        console.log(skill.content);
+      const actionMatch = inventory.skills
+        .map(s => ({
+          skill: s,
+          action: s.actions.find(a => a.name.toLowerCase() === sanitizedName)
+        }))
+        .find(match => match.action);
+
+      if (actionMatch?.action) {
+        const actionContent = extractActionContent(actionMatch.skill.content, actionMatch.action.name);
+        console.log(actionContent || actionMatch.skill.content);
       } else {
         console.error('Skill or action not found.');
         process.exit(1);
@@ -144,7 +155,9 @@ program
         try {
           const inventory = await loadInventory(config, configPath);
           const actionCount = inventory.skills.reduce((sum, s) => sum + s.actions.length, 0);
-          res.json({ ok: true, skillCount: inventory.skills.length, actionCount });
+          const skillCount = inventory.skills.filter(s => s.kind === 'skill').length;
+          const referenceCount = inventory.skills.filter(s => s.kind === 'reference').length;
+          res.json({ ok: true, entryCount: inventory.skills.length, skillCount, referenceCount, actionCount });
         } catch (e) {
           res.status(503).json({ ok: false, error: 'Index unavailable' });
         }
@@ -169,8 +182,10 @@ program
           const inventory = await loadInventory(config, configPath);
           res.json(inventory.skills.map(s => ({ 
             name: s.name, 
+            kind: s.kind,
             description: s.description, 
-            actionCount: s.actions.length 
+            actionCount: s.actions.length,
+            path: s.path
           })));
         } catch (e) {
           res.status(500).json({ error: 'Internal server error' });

@@ -20,6 +20,8 @@ When a logic-audit finding becomes a proposed patch, use `patch-reasoning-audit`
 3. **Attack the Transitions**: Try to skip steps, jump states, or trigger operations out of order.
 4. **Stress the Timing**: Look for logic that assumes operations are atomic when they are not.
 5. **Sample Sibling Paths**: Check different use cases of the same mechanism before concluding which transition is broken.
+6. **Separate Shape From Phase**: The same payload shape can be correct in one lifecycle phase and dangerous in another. Define whether the invariant applies to live state, historical replay, cached state, persisted data, rendered output, or external input.
+7. **Find the First Bad Transition**: Treat corrupted/poisoned/looping state as an effect. Identify the exact transition where a previously valid state becomes invalid before choosing a fix.
 
 ### map_logic
 Use this action to map out the high-level logic of a specific feature.

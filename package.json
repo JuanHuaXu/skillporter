@@ -2,6 +2,7 @@
   "name": "skillporter",
   "version": "0.2.0",
   "description": "Markdown skill indexer and server.",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

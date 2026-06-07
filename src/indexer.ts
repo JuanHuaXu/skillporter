@@ -4,11 +4,15 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { type SkillporterConfig } from './config-schema.js';
 import { parseSkillFile, type SkillInfo } from './parser.js';
+import { CONCEPT_MAP_VERSION, type ConceptMap, generateConceptMap } from './concepts.js';
 
 export interface SkillInventory {
   updatedAt: string;
   configHash?: string;
+  conceptMapHash?: string;
+  conceptMapVersion?: string;
   dirMtimes: Record<string, number>;
+  concepts?: ConceptMap;
   skills: SkillInfo[];
 }
 
@@ -45,6 +49,12 @@ export async function calculateHash(filePath: string): Promise<string> {
 }
 
 export async function indexSkills(config: SkillporterConfig, configPath?: string): Promise<SkillInventory> {
+  const outDir = path.resolve(process.cwd(), config.outDir);
+  // Security: Ensure outDir is within workspace.
+  if (!outDir.startsWith(path.resolve(process.cwd()) + path.sep) && outDir !== path.resolve(process.cwd())) {
+     throw new Error('Security Error: outDir must be within the project workspace.');
+  }
+
   // Security: Global excludes for sensitive directories
   const secureExcludes = [
     ...config.excludePatterns,
@@ -52,29 +62,16 @@ export async function indexSkills(config: SkillporterConfig, configPath?: string
     '**/.ssh/**',
     '**/.aws/**',
     '**/.config/**',
-    '**/node_modules/**'
+    '**/node_modules/**',
+    path.join(config.outDir, '**')
   ];
 
   const fileToBaseDir = new Map<string, string>();
 
-  // 1. Files in current working directory
-  const cwdFiles = await globby(config.includePatterns, {
-    cwd: process.cwd(),
-    ignore: secureExcludes,
-    absolute: true,
-    followSymbolicLinks: false, // Security: Prevent symlink loops/escapes
-    deep: 5 // Security: Limit recursion depth
-  });
-  for (const f of cwdFiles) fileToBaseDir.set(f, process.cwd());
-
   const dirMtimes: Record<string, number> = {};
-  
-  try {
-    const stats = await fs.stat(process.cwd());
-    dirMtimes[process.cwd()] = stats.mtimeMs;
-  } catch {}
 
-  // 2. Files in explicit skillDirs
+  await fs.mkdir(outDir, { recursive: true });
+
   for (const dir of config.skillDirs) {
     // Security: Prevent traversal in config
     if (dir.includes('..')) {
@@ -125,28 +122,31 @@ export async function indexSkills(config: SkillporterConfig, configPath?: string
     }
   }
 
+  const generatedConceptMap = generateConceptMap(skills);
+
   let configHash = '';
   if (configPath) {
     configHash = await calculateHash(configPath);
     try {
-      await fs.writeFile(`${configPath}.sha512`, configHash);
+      await fs.writeFile(path.join(outDir, 'config.sha512'), configHash);
     } catch {}
   }
 
   const inventory: SkillInventory = {
     updatedAt: new Date().toISOString(),
     configHash,
+    conceptMapHash: generatedConceptMap.checksum,
+    conceptMapVersion: generatedConceptMap.version,
     dirMtimes,
+    concepts: generatedConceptMap.concepts,
     skills
   };
 
-  const outDir = path.resolve(process.cwd(), config.outDir);
-  // Security: Ensure outDir is within workspace
-  if (!outDir.startsWith(process.cwd())) {
-     throw new Error('Security Error: outDir must be within the project workspace.');
-  }
-
-  await fs.mkdir(outDir, { recursive: true });
+  await fs.writeFile(path.join(outDir, 'concepts.json'), JSON.stringify({
+    checksum: generatedConceptMap.checksum,
+    version: generatedConceptMap.version,
+    concepts: generatedConceptMap.concepts
+  }, null, 2));
   await fs.writeFile(path.join(outDir, 'inventory.json'), JSON.stringify(inventory, null, 2));
 
   return inventory;
@@ -170,7 +170,7 @@ export async function loadInventory(config: SkillporterConfig, configPath?: stri
       let storedHash = inventory.configHash;
 
       try {
-        const sidecarHash = (await fs.readFile(`${configPath}.sha512`, 'utf-8')).trim();
+        const sidecarHash = (await fs.readFile(path.join(inventoryDir, 'config.sha512'), 'utf-8')).trim();
         if (sidecarHash) {
           storedHash = sidecarHash;
         }
@@ -182,10 +182,21 @@ export async function loadInventory(config: SkillporterConfig, configPath?: stri
       }
     }
 
+    if (!inventory.concepts || !inventory.conceptMapHash || inventory.conceptMapVersion !== CONCEPT_MAP_VERSION) {
+      console.log('Concept map missing or stale, reindexing...');
+      return await indexSkills(config, configPath);
+    }
+
+    if (inventory.skills.some(skill => !skill.search)) {
+      console.log('Search index missing or stale, reindexing...');
+      return await indexSkills(config, configPath);
+    }
+
     for (const [dir, lastMtime] of Object.entries(inventory.dirMtimes || {})) {
+      if (inventoryDir.startsWith(dir)) continue;
       try {
         const stats = await fs.stat(dir);
-        if (stats.mtimeMs > lastMtime) {
+        if (Math.floor(stats.mtimeMs) > Math.floor(lastMtime)) {
           console.log(`Directory ${dir} changed, reindexing...`);
           return await indexSkills(config, configPath);
         }

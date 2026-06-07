@@ -59,7 +59,8 @@ export default {
           const text = results.map((s: any) => {
             const isActive = currentSkill?.name === s.skill;
             const actionText = s.action ? ` (Action match: ${s.action})` : '';
-            return `- **${s.skill}** ${isActive ? '[ACTIVE]' : ''}: ${s.description || '(No description)'}${actionText}`;
+            const kindText = s.kind === 'reference' ? ' [reference]' : '';
+            return `- **${s.skill}**${kindText} ${isActive ? '[ACTIVE]' : ''}: ${s.description || '(No description)'}${actionText}`;
           }).join('\n');
           
           return { content: [{ type: 'text', text: `${header}Available Skills:\n\n${text}\n\nREQUIRED NEXT STEP: Call 'skill_load' with the name of the skill you want to use.` }] };

@@ -42,8 +42,10 @@ The sidecar uses `skillporter.json` in the root directory:
 
 Once installed, your agent gains two new tools:
 
-1.  **`skill_search(query)`**: Returns a ranked list of relevant skills and action-words.
+1.  **`skill_search(query)`**: Returns a ranked list of relevant skills, references, and action-words. Search is local and phrase-aware: it scores exact phrases, token coverage, nearby terms, names, descriptions, action headings, and Markdown body text without using an LLM, embedder, or network service.
 2.  **`skill_load(skill, [action])`**: Loads the full instructions for a skill (or a specific action) directly into the agent's history.
+
+During indexing, Skillporter also generates `.skillporter/concepts.json`: a deterministic concept map with a checksum stored in the inventory. It combines curated local aliases (for example `rce` → `remote code execution`, `unfurl` → `link preview`) with acronym pairs extracted from the Markdown corpus, enabling meaning-like query expansion while staying fast and fully local.
 
 ### Context Management (Librarian Mode)
 Skillporter uses a "Librarian" model. Instead of bloating the system prompt, it returns instructions as tool results. This allows your **Context Engine (e.g., LibraVDB)** to naturally manage the memory and prune instructions when they are no longer relevant.
@@ -71,3 +73,7 @@ skillporter index
 ```bash
 skillporter serve
 ```
+
+## License
+
+Skillporter is released under the [MIT License](./LICENSE).
