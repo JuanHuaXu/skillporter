@@ -60,4 +60,5 @@ Skillporter looks for Markdown files in the configured `skillDirs`. For each fil
 - `GET /skills/:name`: Retrieve the full Markdown content of a specific skill.
 
 ## License
-MIT
+
+Skillporter is released under the [MIT License](./LICENSE).
