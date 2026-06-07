@@ -64,6 +64,31 @@ program
   });
 
 program
+  .command('search')
+  .description('Search skills, references, and actions by keyword, phrase, or concept alias')
+  .argument('<query>', 'search query, including quoted phrases')
+  .option('-c, --config <path>', 'path to skillporter.json', 'skillporter.json')
+  .option('-n, --limit <number>', 'maximum number of results')
+  .action(async (query, options) => {
+    try {
+      const { config, configPath } = await loadConfig(options.config);
+      const limit = options.limit ? parsePositiveInteger(options.limit, '--limit') : config.maxSearchResults;
+      const inventory = await loadInventory(config, configPath);
+      const results = searchInventory(inventory, query, limit);
+
+      if (results.length === 0) {
+        console.log('No matching skills or references found.');
+        return;
+      }
+
+      printSearchResults(results);
+    } catch (error) {
+      console.error('Error searching skills:', error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
+
+program
   .command('get')
   .description('Retrieve the full content of a skill or action')
   .argument('<name>', 'name of the skill or action word')
@@ -93,7 +118,13 @@ program
         const actionContent = extractActionContent(actionMatch.skill.content, actionMatch.action.name);
         console.log(actionContent || actionMatch.skill.content);
       } else {
-        console.error('Skill or action not found.');
+        const suggestions = searchInventory(inventory, action, Math.min(config.maxSearchResults, 5));
+        console.error(`Skill or action '${action}' not found.`);
+        if (suggestions.length > 0) {
+          console.error('\nClosest search results:');
+          printSearchResults(suggestions, console.error);
+          console.error('\nUse `skillporter search <query>` for discovery, then `skillporter get <exact-skill-or-action>` to load content.');
+        }
         process.exit(1);
       }
     } catch (error) {
@@ -294,6 +325,25 @@ async function loadConfig(configPath: string) {
     };
   } catch (err) {
     throw new Error(`Failed to load config at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+function parsePositiveInteger(value: string, optionName: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error(`${optionName} must be a positive integer.`);
+  }
+  return parsed;
+}
+
+function printSearchResults(
+  results: ReturnType<typeof searchInventory>,
+  write: (message?: any) => void = console.log
+) {
+  for (const result of results) {
+    const actionText = result.action ? ` (action: ${result.action})` : '';
+    const description = result.description ? ` - ${result.description}` : '';
+    write(`${result.score.toFixed(2)}  ${result.skill} [${result.kind}]${actionText}${description}`);
   }
 }
 

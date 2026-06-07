@@ -69,6 +69,14 @@ npm run build
 skillporter index
 ```
 
+### Phrase Search
+```bash
+skillporter search "find RCE bugs"
+skillporter search "\"link preview\" discord"
+```
+
+Use `search` for discovery, then pass an exact skill or action name to `get`.
+
 ### Running the API manually
 ```bash
 skillporter serve
