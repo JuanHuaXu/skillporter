@@ -76,6 +76,7 @@ skillporter search "\"link preview\" discord"
 ```
 
 Use `search` for discovery, then pass an exact skill or action name to `get`.
+Search results include a short context snippet so you can choose the right skill or reference before loading the full Markdown.
 
 ### Running the API manually
 ```bash

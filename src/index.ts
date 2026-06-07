@@ -7,8 +7,8 @@ import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { SkillporterConfigSchema } from './config-schema.js';
-import { indexSkills, loadInventory } from './indexer.js';
-import { searchInventory } from './search.js';
+import { type SkillInventory, indexSkills, loadInventory } from './indexer.js';
+import { type SearchResult, searchInventory } from './search.js';
 import { extractActionContent } from './parser.js';
 
 const program = new Command();
@@ -81,7 +81,7 @@ program
         return;
       }
 
-      printSearchResults(results);
+      printSearchResults(results, inventory);
     } catch (error) {
       console.error('Error searching skills:', error instanceof Error ? error.message : String(error));
       process.exit(1);
@@ -122,7 +122,7 @@ program
         console.error(`Skill or action '${action}' not found.`);
         if (suggestions.length > 0) {
           console.error('\nClosest search results:');
-          printSearchResults(suggestions, console.error);
+          printSearchResults(suggestions, inventory, console.error);
           console.error('\nUse `skillporter search <query>` for discovery, then `skillporter get <exact-skill-or-action>` to load content.');
         }
         process.exit(1);
@@ -337,14 +337,53 @@ function parsePositiveInteger(value: string, optionName: string): number {
 }
 
 function printSearchResults(
-  results: ReturnType<typeof searchInventory>,
+  results: SearchResult[],
+  inventory?: SkillInventory,
   write: (message?: any) => void = console.log
 ) {
   for (const result of results) {
     const actionText = result.action ? ` (action: ${result.action})` : '';
     const description = result.description ? ` - ${result.description}` : '';
     write(`${result.score.toFixed(2)}  ${result.skill} [${result.kind}]${actionText}${description}`);
+    const snippet = inventory ? createSearchSnippet(inventory, result) : '';
+    if (snippet) write(`    ${snippet}`);
   }
+}
+
+function createSearchSnippet(inventory: SkillInventory, result: SearchResult): string {
+  const skill = inventory.skills.find(entry => entry.name === result.skill);
+  if (!skill) return '';
+
+  if (result.action) {
+    const actionContent = extractActionContent(skill.content, result.action);
+    if (actionContent) return summarizeMarkdown(actionContent);
+  }
+
+  const description = skill.description?.trim();
+  if (description) return truncate(description, 220);
+
+  return summarizeMarkdown(skill.content);
+}
+
+function summarizeMarkdown(markdown: string): string {
+  const lines = markdown
+    .replace(/^---[\s\S]*?---\s*/, '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('#') && !line.startsWith('```'));
+
+  const text = lines
+    .slice(0, 4)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return truncate(text, 220);
+}
+
+function truncate(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 program.parse();
